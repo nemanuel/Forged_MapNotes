@@ -1,0 +1,13 @@
+## Interface: 11200
+## Title: |cfff07d30Forged|r Map Notes
+## Notes: Automatically records gathering locations and lets players create custom map notes
+## Author: Chromag
+## Version: 1.0.1
+## Website: https://forgedworlds.com
+## Email: chromag@forgedworlds.com
+## SavedVariables: ForgedMapNotesDB
+
+core.lua
+coordinates.lua
+gathering.lua
+dialogs.lua
