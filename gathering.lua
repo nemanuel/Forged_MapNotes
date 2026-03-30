@@ -67,12 +67,12 @@ local HERBALISM_ICON_PATHS = {
 }
 
 local WOODCUTTING_ICON_PATHS = {
-    ["Simple Wood"] = "Interface\\Icons\\INV_TradeskillItem_01",
+    ["Simple Wood"] = "Interface\\Icons\\simple_wood_1",
     ["Bright Wood"] = "Interface\\Icons\\INV_TradeskillItem_01",
     ["Shade Wood"] = "Interface\\Icons\\INV_TradeskillItem_01",
-    ["Tropical Wood"] = "Interface\\Icons\\INV_TradeskillItem_01",
+    ["Tropical Wood"] = "Interface\\Icons\\tropical_logs_1",
     ["Dead Wood Tree"] = "Interface\\Icons\\INV_TradeskillItem_01",
-    ["Star Wood"] = "Interface\\Icons\\INV_TradeskillItem_01",
+    ["Star Wood"] = "Interface\\Icons\\star_log_1",
 }
 
 local WOODCUTTING_NODE_ALIASES = {
