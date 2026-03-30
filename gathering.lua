@@ -66,6 +66,23 @@ local HERBALISM_ICON_PATHS = {
     ["Ancient Lichen"] = "Interface\\Icons\\INV_Misc_Herb_AncientLichen",
 }
 
+local WOODCUTTING_ICON_PATHS = {
+    ["Simple Wood"] = "Interface\\Icons\\INV_TradeskillItem_01",
+    ["Bright Wood"] = "Interface\\Icons\\INV_TradeskillItem_01",
+    ["Shade Wood"] = "Interface\\Icons\\INV_TradeskillItem_01",
+    ["Tropical Wood"] = "Interface\\Icons\\INV_TradeskillItem_01",
+    ["Dead Wood Tree"] = "Interface\\Icons\\INV_TradeskillItem_01",
+    ["Star Wood"] = "Interface\\Icons\\INV_TradeskillItem_01",
+}
+
+local WOODCUTTING_NODE_ALIASES = {
+    ["Simple Wood Tree"] = "Simple Wood",
+    ["Bright Wood Tree"] = "Bright Wood",
+    ["Shade Wood Tree"] = "Shade Wood",
+    ["Tropical Wood Tree"] = "Tropical Wood",
+    ["Dead Wood"] = "Dead Wood Tree",
+}
+
 local function BuildSimplePerformPattern()
     if type(SIMPLEPERFORMSELFOTHER) ~= "string" then
         return nil
@@ -181,8 +198,49 @@ function addon:GetHerbalismIconPath(herbName)
     return HERBALISM_ICON_PATHS[herbName]
 end
 
+local function NormalizeWoodcuttingNodeName(text)
+    if not text or text == "" then
+        return nil
+    end
+
+    local wood = text
+    local _, _, stripped = string.find(wood, "^(.-) %(%d+%)$")
+    if stripped then
+        wood = stripped
+    end
+
+    if WOODCUTTING_NODE_ALIASES[wood] then
+        return WOODCUTTING_NODE_ALIASES[wood]
+    end
+
+    if WOODCUTTING_ICON_PATHS[wood] then
+        return wood
+    end
+
+    if string.find(wood, "Dead Wood") then
+        return "Dead Wood Tree"
+    end
+
+    for key in pairs(WOODCUTTING_ICON_PATHS) do
+        if string.find(wood, key) then
+            return key
+        end
+    end
+
+    return nil
+end
+
+function addon:GetWoodcuttingIconPath(nodeName)
+    if not nodeName then
+        return nil
+    end
+    return WOODCUTTING_ICON_PATHS[nodeName]
+end
+
 function addon:GetAutoIconForName(name)
-    return self:GetMiningIconPath(name) or self:GetHerbalismIconPath(NormalizeHerbName(name))
+    return self:GetMiningIconPath(name)
+        or self:GetHerbalismIconPath(NormalizeHerbName(name))
+        or self:GetWoodcuttingIconPath(NormalizeWoodcuttingNodeName(name))
 end
 
 local function AddAutomaticGatheringNote(normalizedName, iconPath)
@@ -231,48 +289,93 @@ local function AddAutomaticHerbalismNote(herbName)
     AddAutomaticGatheringNote(normalized, addon:GetHerbalismIconPath(normalized))
 end
 
+local function AddAutomaticWoodcuttingNote(nodeName)
+    local normalized = NormalizeWoodcuttingNodeName(nodeName)
+    if not normalized then
+        return
+    end
+
+    AddAutomaticGatheringNote(normalized, addon:GetWoodcuttingIconPath(normalized))
+end
+
+local function GetTooltipNodeName()
+    if GameTooltipTextLeft1 and GameTooltipTextLeft1.GetText then
+        return GameTooltipTextLeft1:GetText()
+    end
+
+    return nil
+end
+
+local function DetectGatheringType(nodeName, skillText)
+    local lowerSkill = skillText and string.lower(skillText) or nil
+
+    if lowerSkill and string.find(lowerSkill, "mining") then
+        return "mining"
+    end
+
+    if lowerSkill and string.find(lowerSkill, "herb") then
+        return "herbalism"
+    end
+
+    if lowerSkill and (string.find(lowerSkill, "woodcut") or string.find(lowerSkill, "survival")) then
+        return "woodcutting"
+    end
+
+    if NormalizeMiningNodeName(nodeName) then
+        return "mining"
+    end
+
+    if NormalizeHerbName(nodeName) then
+        return "herbalism"
+    end
+
+    if NormalizeWoodcuttingNodeName(nodeName) then
+        return "woodcutting"
+    end
+
+    return nil
+end
+
+local function AddAutomaticGatheringNoteByType(gatherType, nodeName)
+    if gatherType == "mining" then
+        AddAutomaticMiningNote(nodeName)
+    elseif gatherType == "herbalism" then
+        AddAutomaticHerbalismNote(nodeName)
+    elseif gatherType == "woodcutting" then
+        AddAutomaticWoodcuttingNote(nodeName)
+    end
+end
+
 function addon:OnGatheringInit()
     self.miningPerformPattern = BuildSimplePerformPattern()
     self.herbalismPerformPattern = self.miningPerformPattern
+    self.woodcuttingPerformPattern = self.miningPerformPattern
 end
 
 function addon:HandleGatheringEvent(event, msg)
     if event == "SPELLCAST_START" then
-        if msg and string.find(string.lower(msg), "mining") then
-            if GameTooltipTextLeft1 and GameTooltipTextLeft1.GetText then
-                AddAutomaticMiningNote(GameTooltipTextLeft1:GetText())
-            end
-        elseif msg and string.find(string.lower(msg), "herb") then
-            if GameTooltipTextLeft1 and GameTooltipTextLeft1.GetText then
-                AddAutomaticHerbalismNote(GameTooltipTextLeft1:GetText())
-            end
-        end
+        AddAutomaticGatheringNoteByType(DetectGatheringType(GetTooltipNodeName(), msg), GetTooltipNodeName())
         return true
     end
 
     if event == "UI_ERROR_MESSAGE" then
-        if msg and string.find(string.lower(msg), "requires mining") then
-            if GameTooltipTextLeft1 and GameTooltipTextLeft1.GetText then
-                AddAutomaticMiningNote(GameTooltipTextLeft1:GetText())
-            end
-        elseif msg and string.find(string.lower(msg), "requires herbalism") then
-            if GameTooltipTextLeft1 and GameTooltipTextLeft1.GetText then
-                AddAutomaticHerbalismNote(GameTooltipTextLeft1:GetText())
-            end
+        local nodeName = GetTooltipNodeName()
+        local lowerMsg = msg and string.lower(msg) or nil
+        if lowerMsg and string.find(lowerMsg, "requires mining") then
+            AddAutomaticMiningNote(nodeName)
+        elseif lowerMsg and string.find(lowerMsg, "requires herbalism") then
+            AddAutomaticHerbalismNote(nodeName)
+        elseif lowerMsg and (string.find(lowerMsg, "requires woodcut") or string.find(lowerMsg, "requires survival")) then
+            AddAutomaticWoodcuttingNote(nodeName)
         end
         return true
     end
 
     if event == "CHAT_MSG_SPELL_SELF_BUFF" then
-        if msg and self.miningPerformPattern then
-            local _, _, skillName, targetName = string.find(msg, self.miningPerformPattern)
+        if msg and self.woodcuttingPerformPattern then
+            local _, _, skillName, targetName = string.find(msg, self.woodcuttingPerformPattern)
             if skillName and targetName then
-                local lowerSkill = string.lower(skillName)
-                if string.find(lowerSkill, "mining") then
-                    AddAutomaticMiningNote(targetName)
-                elseif string.find(lowerSkill, "herb") then
-                    AddAutomaticHerbalismNote(targetName)
-                end
+                AddAutomaticGatheringNoteByType(DetectGatheringType(targetName, skillName), targetName)
             end
         end
         return true

@@ -18,6 +18,7 @@ addon.worldMapButtonOnClickHooked = nil
 addon.coordinatesFrame = addon.coordinatesFrame or nil
 addon.miningPerformPattern = nil
 addon.herbalismPerformPattern = nil
+addon.woodcuttingPerformPattern = nil
 addon.DEFAULT_NOTE_ICON = "Interface\\Icons\\INV_Misc_Note_01"
 
 function addon:GetMapKey()

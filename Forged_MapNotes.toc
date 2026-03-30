@@ -2,7 +2,7 @@
 ## Title: |cfff07d30Forged|r Map Notes
 ## Notes: Automatically records gathering locations and lets players create custom map notes
 ## Author: Chromag
-## Version: 1.0.1
+## Version: 1.1.0
 ## Website: https://forgedworlds.com
 ## Email: chromag@forgedworlds.com
 ## SavedVariables: ForgedMapNotesDB
