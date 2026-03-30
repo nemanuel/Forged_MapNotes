@@ -18,6 +18,9 @@ It adds manual map notes, edit/delete dialogs, map coordinates, and automatic pr
 - **Automatic profession notes**
   - Auto-adds notes when gathering **Mining**, **Herbalism**, and **Woodcutting** nodes.
   - Uses profession-specific node icons (ore/herb/wood icons).
+- **Map filter dropdown**
+  - Adds a `Gathering` dropdown to the world map panel.
+  - Filters notes by `All`, `General`, `Mining`, `Herbalism`, or `Woodcutting`.
 - **Per-map persistence**
   - Notes are saved per map/zone in `ForgedMapNotesDB`.
 

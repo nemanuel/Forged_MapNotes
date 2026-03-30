@@ -243,7 +243,23 @@ function addon:GetAutoIconForName(name)
         or self:GetWoodcuttingIconPath(NormalizeWoodcuttingNodeName(name))
 end
 
-local function AddAutomaticGatheringNote(normalizedName, iconPath)
+function addon:GetAutoCategoryForName(name)
+    if self:GetMiningIconPath(name) then
+        return "mining"
+    end
+
+    if self:GetHerbalismIconPath(NormalizeHerbName(name)) then
+        return "herbalism"
+    end
+
+    if self:GetWoodcuttingIconPath(NormalizeWoodcuttingNodeName(name)) then
+        return "woodcutting"
+    end
+
+    return nil
+end
+
+local function AddAutomaticGatheringNote(normalizedName, iconPath, category)
     local mapKey, x, y = CapturePlayerMapContext()
     if not mapKey or not x or not y or (x == 0 and y == 0) then
         return
@@ -266,6 +282,7 @@ local function AddAutomaticGatheringNote(normalizedName, iconPath)
         y = y,
         name = normalizedName,
         icon = iconPath,
+        category = category,
     })
 
     addon:RefreshPins()
@@ -277,7 +294,7 @@ local function AddAutomaticMiningNote(nodeName)
         return
     end
 
-    AddAutomaticGatheringNote(normalized, addon:GetMiningIconPath(normalized))
+    AddAutomaticGatheringNote(normalized, addon:GetMiningIconPath(normalized), "mining")
 end
 
 local function AddAutomaticHerbalismNote(herbName)
@@ -286,7 +303,7 @@ local function AddAutomaticHerbalismNote(herbName)
         return
     end
 
-    AddAutomaticGatheringNote(normalized, addon:GetHerbalismIconPath(normalized))
+    AddAutomaticGatheringNote(normalized, addon:GetHerbalismIconPath(normalized), "herbalism")
 end
 
 local function AddAutomaticWoodcuttingNote(nodeName)
@@ -295,7 +312,7 @@ local function AddAutomaticWoodcuttingNote(nodeName)
         return
     end
 
-    AddAutomaticGatheringNote(normalized, addon:GetWoodcuttingIconPath(normalized))
+    AddAutomaticGatheringNote(normalized, addon:GetWoodcuttingIconPath(normalized), "woodcutting")
 end
 
 local function GetTooltipNodeName()
