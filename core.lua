@@ -17,7 +17,6 @@ addon.originalWorldMapButtonOnClick = nil
 addon.worldMapButtonOnClickHooked = nil
 addon.coordinatesFrame = addon.coordinatesFrame or nil
 addon.gatheringFilterDropDown = addon.gatheringFilterDropDown or nil
-addon.gatheringFilterButton = addon.gatheringFilterButton or nil
 addon.miningPerformPattern = nil
 addon.herbalismPerformPattern = nil
 addon.woodcuttingPerformPattern = nil
@@ -26,11 +25,44 @@ addon.DEFAULT_GATHERING_FILTER = "all"
 
 local GATHERING_FILTER_OPTIONS = {
     { value = "all", text = "All" },
-    { value = "general", text = "General" },
+    { value = "personal", text = "Personal" },
     { value = "mining", text = "Mining" },
     { value = "herbalism", text = "Herbalism" },
     { value = "woodcutting", text = "Woodcutting" },
 }
+
+function addon:NormalizeNoteCategory(category)
+    if not category or category == "" or category == "general" then
+        return "personal"
+    end
+
+    return category
+end
+
+function addon:MigrateLegacyGeneralCategory()
+    if not ForgedMapNotesDB then
+        return
+    end
+
+    if ForgedMapNotesDB.gatheringFilter == "general" then
+        ForgedMapNotesDB.gatheringFilter = "personal"
+    end
+
+    if not ForgedMapNotesDB.notes then
+        return
+    end
+
+    for _, notes in pairs(ForgedMapNotesDB.notes) do
+        if notes then
+            for i = 1, table.getn(notes) do
+                local note = notes[i]
+                if note and note.category == "general" then
+                    note.category = "personal"
+                end
+            end
+        end
+    end
+end
 
 function addon:GetMapKey()
     local continent = GetCurrentMapContinent() or 0
@@ -64,21 +96,21 @@ end
 
 function addon:GetNoteCategory(note)
     if not note then
-        return "general"
+        return "personal"
     end
 
     if note.category and note.category ~= "" then
-        return note.category
+        return self:NormalizeNoteCategory(note.category)
     end
 
     if self.GetAutoCategoryForName then
         local autoCategory = self:GetAutoCategoryForName(note.name)
         if autoCategory then
-            return autoCategory
+            return self:NormalizeNoteCategory(autoCategory)
         end
     end
 
-    return "general"
+    return "personal"
 end
 
 function addon:ShouldDisplayNote(note)
@@ -92,16 +124,55 @@ end
 
 function addon:SetGatheringFilter(filterValue)
     local nextFilter = filterValue or self.DEFAULT_GATHERING_FILTER
+    if nextFilter == "general" then
+        nextFilter = "personal"
+    end
     self.activeGatheringFilter = nextFilter
 
     ForgedMapNotesDB = ForgedMapNotesDB or {}
     ForgedMapNotesDB.gatheringFilter = nextFilter
 
-    if self.gatheringFilterButton and self.gatheringFilterButton.valueText then
-        self.gatheringFilterButton.valueText:SetText(self:GetGatheringFilterText(nextFilter))
-    end
+    self:UpdateGatheringFilterDropdownText()
 
     self:RefreshPins()
+end
+
+function addon:UpdateGatheringFilterDropdownText()
+    local dropDown = self.gatheringFilterDropDown
+    if not dropDown then
+        return
+    end
+
+    local activeFilter = self.activeGatheringFilter or self.DEFAULT_GATHERING_FILTER
+    local filterText = self:GetGatheringFilterText(activeFilter)
+
+    if UIDropDownMenu_SetSelectedValue then
+        UIDropDownMenu_SetSelectedValue(dropDown, activeFilter)
+    end
+
+    if UIDropDownMenu_SetText then
+        UIDropDownMenu_SetText(filterText, dropDown)
+        return
+    end
+
+    local textRegion = getglobal(dropDown:GetName() .. "Text")
+    if textRegion then
+        textRegion:SetText(filterText)
+    end
+end
+
+function addon:ScaleGatheringFilterMenu(scale)
+    local menuScale = scale or 1.15
+    local maxLevels = UIDROPDOWNMENU_MAXLEVELS or 2
+    local level = 1
+
+    while level <= maxLevels do
+        local listFrame = getglobal("DropDownList" .. level)
+        if listFrame then
+            listFrame:SetScale(menuScale)
+        end
+        level = level + 1
+    end
 end
 
 function addon:SetupGatheringFilterDropdown()
@@ -109,10 +180,10 @@ function addon:SetupGatheringFilterDropdown()
         return
     end
 
-    local menuFrame = self.gatheringFilterDropDown
-    if not menuFrame then
-        menuFrame = CreateFrame("Frame", "ForgedMapNotesGatheringDropDown", WorldMapFrame, "UIDropDownMenuTemplate")
-        UIDropDownMenu_Initialize(menuFrame, function()
+    local dropDown = self.gatheringFilterDropDown
+    if not dropDown then
+        dropDown = CreateFrame("Frame", "ForgedMapNotesGatheringDropDown", self.coordinatesFrame, "UIDropDownMenuTemplate")
+        UIDropDownMenu_Initialize(dropDown, function()
             for i = 1, table.getn(GATHERING_FILTER_OPTIONS) do
                 local option = GATHERING_FILTER_OPTIONS[i]
                 local info = UIDropDownMenu_CreateInfo()
@@ -125,53 +196,71 @@ function addon:SetupGatheringFilterDropdown()
                 UIDropDownMenu_AddButton(info)
             end
         end)
-        menuFrame:Hide()
-        self.gatheringFilterDropDown = menuFrame
+        if UIDropDownMenu_SetWidth then
+            UIDropDownMenu_SetWidth(130, dropDown)
+        end
+
+        if not dropDown.titleText then
+            dropDown.titleText = dropDown:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+            dropDown.titleText:SetPoint("BOTTOMLEFT", dropDown, "TOPLEFT", 20, 2)
+            dropDown.titleText:SetJustifyH("LEFT")
+            dropDown.titleText:SetTextColor(1, 0.82, 0)
+        end
+
+        dropDown.titleText:SetText("Map Notes")
+
+        local textRegion = getglobal(dropDown:GetName() .. "Text")
+        if textRegion then
+            textRegion:ClearAllPoints()
+            textRegion:SetPoint("LEFT", dropDown, "LEFT", 22, 5)
+            textRegion:SetPoint("RIGHT", dropDown, "RIGHT", -46, 5)
+            textRegion:SetJustifyH("RIGHT")
+        end
+
+        local leftTexture = getglobal(dropDown:GetName() .. "Left")
+        if leftTexture then
+            leftTexture:SetHeight(60)
+        end
+
+        local middleTexture = getglobal(dropDown:GetName() .. "Middle")
+        if middleTexture then
+            middleTexture:SetHeight(60)
+        end
+
+        local rightTexture = getglobal(dropDown:GetName() .. "Right")
+        if rightTexture then
+            rightTexture:SetHeight(60)
+        end
+
+        local button = getglobal(dropDown:GetName() .. "Button")
+        if button then
+            button:ClearAllPoints()
+            button:SetPoint("RIGHT", dropDown, "RIGHT", -16, 4)
+            button:SetWidth(24)
+            button:SetHeight(24)
+            button:SetFrameLevel(dropDown:GetFrameLevel() + 5)
+            button:SetScript("OnClick", function()
+                ToggleDropDownMenu(1, nil, dropDown, button, 10, -22)
+                addon:ScaleGatheringFilterMenu(1)
+            end)
+            button:Show()
+        end
+
+        self.gatheringFilterDropDown = dropDown
     end
 
-    local button = self.gatheringFilterButton
-    if not button then
-        button = CreateFrame("Button", "ForgedMapNotesGatheringFilterButton", self.coordinatesFrame, "UIPanelButtonTemplate")
-        button:SetWidth(150)
-        button:SetHeight(22)
-        button:SetFrameStrata("TOOLTIP")
-        button:SetFrameLevel(self.coordinatesFrame:GetFrameLevel() + 5)
-        button:SetText("")
+    dropDown:SetParent(self.coordinatesFrame)
+    dropDown:SetFrameStrata("TOOLTIP")
+    dropDown:SetFrameLevel(self.coordinatesFrame:GetFrameLevel() + 5)
+    dropDown:ClearAllPoints()
+    dropDown:SetPoint("TOPRIGHT", self.coordinatesFrame, "TOPRIGHT", -14, 32)
 
-        button.label = button:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
-        button.label:SetText("Gathering")
-        button.label:SetTextColor(1, 0.82, 0)
-
-        button.valueText = button:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-        button.valueText:SetJustifyH("LEFT")
-
-        button.arrow = button:CreateTexture(nil, "ARTWORK")
-        button.arrow:SetTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Up")
-        button.arrow:SetWidth(18)
-        button.arrow:SetHeight(18)
-
-        button:SetScript("OnClick", function()
-            ToggleDropDownMenu(1, nil, addon.gatheringFilterDropDown, this, 0, 0)
-        end)
-
-        self.gatheringFilterButton = button
+    if dropDown.titleText then
+        dropDown.titleText:Show()
     end
 
-    button:SetParent(self.coordinatesFrame)
-    button:SetFrameStrata("TOOLTIP")
-    button:SetFrameLevel(self.coordinatesFrame:GetFrameLevel() + 5)
-    button:ClearAllPoints()
-    button:SetPoint("TOPRIGHT", self.coordinatesFrame, "TOPRIGHT", -16, -18)
-
-    button.label:ClearAllPoints()
-    button.label:SetPoint("BOTTOMLEFT", button, "TOPLEFT", 2, 1)
-    button.valueText:ClearAllPoints()
-    button.valueText:SetPoint("LEFT", button, "LEFT", 10, 0)
-    button.valueText:SetPoint("RIGHT", button, "RIGHT", -24, 0)
-    button.valueText:SetText(self:GetGatheringFilterText(self.activeGatheringFilter or self.DEFAULT_GATHERING_FILTER))
-    button.arrow:ClearAllPoints()
-    button.arrow:SetPoint("RIGHT", button, "RIGHT", -5, 0)
-    button:Show()
+    self:UpdateGatheringFilterDropdownText()
+    dropDown:Show()
 end
 
 function addon:GetCursorMapPosition()
@@ -295,7 +384,7 @@ function addon:AddNote(name)
         y = self.pendingY,
         name = (name and name ~= "") and name or "Note",
         icon = nil,
-        category = (self.GetAutoCategoryForName and self:GetAutoCategoryForName(name)) or "general",
+        category = self:NormalizeNoteCategory((self.GetAutoCategoryForName and self:GetAutoCategoryForName(name)) or "personal"),
     })
 
     self.pendingX = nil
@@ -322,7 +411,7 @@ function addon:UpdateNoteName(mapKey, noteIndex, name)
     if self.GetAutoIconForName then
         note.icon = self:GetAutoIconForName(note.name)
     end
-    note.category = (self.GetAutoCategoryForName and self:GetAutoCategoryForName(note.name)) or "general"
+    note.category = self:NormalizeNoteCategory((self.GetAutoCategoryForName and self:GetAutoCategoryForName(note.name)) or "personal")
     self:RefreshPins()
 end
 
@@ -404,6 +493,7 @@ function addon:OnEvent(event)
     if event == "PLAYER_LOGIN" then
         ForgedMapNotesDB = ForgedMapNotesDB or {}
         ForgedMapNotesDB.notes = ForgedMapNotesDB.notes or {}
+        self:MigrateLegacyGeneralCategory()
         self.activeGatheringFilter = ForgedMapNotesDB.gatheringFilter or self.DEFAULT_GATHERING_FILTER
 
         if self.OnGatheringInit then
@@ -499,9 +589,6 @@ if WorldMapFrame then
         end
         if addon.gatheringFilterDropDown then
             addon.gatheringFilterDropDown:Hide()
-        end
-        if addon.gatheringFilterButton then
-            addon.gatheringFilterButton:Hide()
         end
     end)
 end
