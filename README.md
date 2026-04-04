@@ -2,7 +2,7 @@
 
 `Turtle Map Notes` is a standalone map notes addon for Turtle WoW.
 
-It adds manual map notes, edit/delete dialogs, map coordinates, and automatic profession node notes for Mining, Herbalism, and Turtle WoW Survival woodcutting.
+It adds manual map notes, edit/delete dialogs, map coordinates, and automatic node notes for mining, herbalism, woodcutting and treasure chests.
 
 ## Features
 
@@ -15,12 +15,13 @@ It adds manual map notes, edit/delete dialogs, map coordinates, and automatic pr
 - **Coordinates on map**
   - Bottom-left: cursor coordinates.
   - Bottom-right: player coordinates.
-- **Automatic profession notes**
+- **Automatic gathering and treasure notes**
   - Auto-adds notes when gathering **Mining**, **Herbalism**, and **Woodcutting** nodes.
-  - Uses profession-specific node icons (ore/herb/wood icons).
+  - Auto-adds notes for treasure chests when they are opened or interacted with.
+  - Uses node-specific icons for ore, herb, wood, and treasure notes.
 - **Map filter dropdown**
   - Adds a `Gathering` dropdown to the world map panel.
-  - Filters notes by `All`, `General`, `Mining`, `Herbalism`, or `Woodcutting`.
+  - Filters notes by `All`, `Personal`, `Mining`, `Herbalism`, `Woodcutting`, or `Treasure`.
 - **Per-map persistence**
   - Notes are saved per map/zone in `ForgedMapNotesDB`.
 
@@ -67,7 +68,7 @@ The addon recognizes these Turtle WoW woodcutting node types and stores them as 
 
 ## Notes
 
-- Auto profession detection is based on gather/cast/error events and tooltip node names.
+- Auto note detection is based on gather, loot, cast, and error events plus tooltip node names.
 - If behavior seems stale after updates, use `/reload`.
 
 ## Credits

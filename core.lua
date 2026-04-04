@@ -29,6 +29,7 @@ local GATHERING_FILTER_OPTIONS = {
     { value = "mining", text = "Mining" },
     { value = "herbalism", text = "Herbalism" },
     { value = "woodcutting", text = "Woodcutting" },
+    { value = "treasure", text = "Treasure" },
 }
 
 function addon:NormalizeNoteCategory(category)
@@ -509,6 +510,8 @@ function addon:OnEvent(event)
         self:RegisterEvent("SPELLCAST_START")
         self:RegisterEvent("UI_ERROR_MESSAGE")
         self:RegisterEvent("CHAT_MSG_SPELL_SELF_BUFF")
+        self:RegisterEvent("LOOT_OPENED")
+        self:RegisterEvent("OPEN_LOCK")
 
         self:RefreshPins()
         return

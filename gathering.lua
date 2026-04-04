@@ -83,6 +83,16 @@ local WOODCUTTING_NODE_ALIASES = {
     ["Dead Wood"] = "Dead Wood Tree",
 }
 
+local TREASURE_ICON_PATH = "Interface\\Icons\\INV_Box_01"
+
+local TREASURE_NODE_KEYWORDS = {
+    "chest",
+    "coffer",
+    "strongbox",
+    "cache",
+    "footlocker",
+}
+
 local function BuildSimplePerformPattern()
     if type(SIMPLEPERFORMSELFOTHER) ~= "string" then
         return nil
@@ -230,6 +240,27 @@ local function NormalizeWoodcuttingNodeName(text)
     return nil
 end
 
+local function NormalizeTreasureNodeName(text)
+    if not text or text == "" then
+        return nil
+    end
+
+    local node = text
+    local _, _, stripped = string.find(node, "^(.-) %(%d+%)$")
+    if stripped then
+        node = stripped
+    end
+
+    local lowerNode = string.lower(node)
+    for i = 1, table.getn(TREASURE_NODE_KEYWORDS) do
+        if string.find(lowerNode, TREASURE_NODE_KEYWORDS[i], 1, true) then
+            return node
+        end
+    end
+
+    return nil
+end
+
 function addon:GetWoodcuttingIconPath(nodeName)
     if not nodeName then
         return nil
@@ -237,10 +268,23 @@ function addon:GetWoodcuttingIconPath(nodeName)
     return WOODCUTTING_ICON_PATHS[nodeName]
 end
 
+function addon:GetTreasureIconPath(nodeName)
+    if not nodeName then
+        return nil
+    end
+
+    if NormalizeTreasureNodeName(nodeName) then
+        return TREASURE_ICON_PATH
+    end
+
+    return nil
+end
+
 function addon:GetAutoIconForName(name)
     return self:GetMiningIconPath(name)
         or self:GetHerbalismIconPath(NormalizeHerbName(name))
         or self:GetWoodcuttingIconPath(NormalizeWoodcuttingNodeName(name))
+        or self:GetTreasureIconPath(name)
 end
 
 function addon:GetAutoCategoryForName(name)
@@ -254,6 +298,10 @@ function addon:GetAutoCategoryForName(name)
 
     if self:GetWoodcuttingIconPath(NormalizeWoodcuttingNodeName(name)) then
         return "woodcutting"
+    end
+
+    if self:GetTreasureIconPath(name) then
+        return "treasure"
     end
 
     return nil
@@ -315,12 +363,70 @@ local function AddAutomaticWoodcuttingNote(nodeName)
     AddAutomaticGatheringNote(normalized, addon:GetWoodcuttingIconPath(normalized), "woodcutting")
 end
 
+local function AddAutomaticTreasureNote(nodeName)
+    local normalized = NormalizeTreasureNodeName(nodeName)
+    if not normalized then
+        return
+    end
+
+    AddAutomaticGatheringNote(normalized, addon:GetTreasureIconPath(normalized), "treasure")
+end
+
 local function GetTooltipNodeName()
     if GameTooltipTextLeft1 and GameTooltipTextLeft1.GetText then
         return GameTooltipTextLeft1:GetText()
     end
 
     return nil
+end
+
+local function IsTrackableNodeName(nodeName)
+    return NormalizeMiningNodeName(nodeName)
+        or NormalizeHerbName(nodeName)
+        or NormalizeWoodcuttingNodeName(nodeName)
+        or NormalizeTreasureNodeName(nodeName)
+end
+
+local function TrackTooltipNodeName()
+    local nodeName = GetTooltipNodeName()
+    if nodeName and IsTrackableNodeName(nodeName) then
+        addon.lastTooltipNodeName = nodeName
+        addon.lastTooltipNodeTime = GetTime and GetTime() or 0
+    end
+
+    return addon.lastTooltipNodeName
+end
+
+function addon:GetRecentlyTrackedNodeName(maxAge)
+    local now = GetTime and GetTime() or 0
+    local trackedAt = self.lastTooltipNodeTime or 0
+    local ageLimit = maxAge or 3
+
+    if self.lastTooltipNodeName and (now - trackedAt) <= ageLimit then
+        return self.lastTooltipNodeName
+    end
+
+    return nil
+end
+
+function addon:SetupTooltipTracking()
+    if self.tooltipTrackingHooked or not GameTooltip then
+        return
+    end
+
+    if GameTooltip.HookScript then
+        GameTooltip:HookScript("OnShow", TrackTooltipNodeName)
+    else
+        local originalOnShow = GameTooltip:GetScript("OnShow")
+        GameTooltip:SetScript("OnShow", function()
+            if originalOnShow then
+                originalOnShow()
+            end
+            TrackTooltipNodeName()
+        end)
+    end
+
+    self.tooltipTrackingHooked = true
 end
 
 local function DetectGatheringType(nodeName, skillText)
@@ -350,6 +456,10 @@ local function DetectGatheringType(nodeName, skillText)
         return "woodcutting"
     end
 
+    if NormalizeTreasureNodeName(nodeName) then
+        return "treasure"
+    end
+
     return nil
 end
 
@@ -360,6 +470,8 @@ local function AddAutomaticGatheringNoteByType(gatherType, nodeName)
         AddAutomaticHerbalismNote(nodeName)
     elseif gatherType == "woodcutting" then
         AddAutomaticWoodcuttingNote(nodeName)
+    elseif gatherType == "treasure" then
+        AddAutomaticTreasureNote(nodeName)
     end
 end
 
@@ -367,6 +479,9 @@ function addon:OnGatheringInit()
     self.miningPerformPattern = BuildSimplePerformPattern()
     self.herbalismPerformPattern = self.miningPerformPattern
     self.woodcuttingPerformPattern = self.miningPerformPattern
+    self.lastTooltipNodeName = nil
+    self.lastTooltipNodeTime = 0
+    self:SetupTooltipTracking()
 end
 
 function addon:HandleGatheringEvent(event, msg)
@@ -375,8 +490,13 @@ function addon:HandleGatheringEvent(event, msg)
         return true
     end
 
+    if event == "LOOT_OPENED" or event == "OPEN_LOCK" then
+        AddAutomaticTreasureNote(self:GetRecentlyTrackedNodeName(3))
+        return true
+    end
+
     if event == "UI_ERROR_MESSAGE" then
-        local nodeName = GetTooltipNodeName()
+        local nodeName = GetTooltipNodeName() or self:GetRecentlyTrackedNodeName(3)
         local lowerMsg = msg and string.lower(msg) or nil
         if lowerMsg and string.find(lowerMsg, "requires mining") then
             AddAutomaticMiningNote(nodeName)
@@ -384,6 +504,8 @@ function addon:HandleGatheringEvent(event, msg)
             AddAutomaticHerbalismNote(nodeName)
         elseif lowerMsg and (string.find(lowerMsg, "requires woodcut") or string.find(lowerMsg, "requires survival")) then
             AddAutomaticWoodcuttingNote(nodeName)
+        elseif lowerMsg and (string.find(lowerMsg, "locked") or string.find(lowerMsg, "lockpicking")) then
+            AddAutomaticTreasureNote(nodeName)
         end
         return true
     end
