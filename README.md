@@ -1,6 +1,6 @@
-# Turtle Map Notes
+# Forged Map Notes
 
-`Turtle Map Notes` is a standalone map notes addon for Turtle WoW.
+`Forged Map Notes` is a standalone map notes addon for World of Warcraft 1.12.1.
 
 It adds manual map notes, edit/delete dialogs, map coordinates, and automatic node notes for mining, herbalism, woodcutting and treasure chests.
 
@@ -27,7 +27,7 @@ It adds manual map notes, edit/delete dialogs, map coordinates, and automatic no
 
 ## Requirements
 
-- **Game:** Turtle WoW (Vanilla Client)
+- **Game:** World of Warcraft 1.12.1
 - **Interface:** `11200`
 
 ## Installation
