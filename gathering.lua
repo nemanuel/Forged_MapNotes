@@ -66,23 +66,6 @@ local HERBALISM_ICON_PATHS = {
     ["Ancient Lichen"] = "Interface\\Icons\\INV_Misc_Herb_AncientLichen",
 }
 
-local WOODCUTTING_ICON_PATHS = {
-    ["Simple Wood"] = "Interface\\Icons\\simple_wood_1",
-    ["Bright Wood"] = "Interface\\Icons\\INV_TradeskillItem_01",
-    ["Shade Wood"] = "Interface\\Icons\\INV_TradeskillItem_01",
-    ["Tropical Wood"] = "Interface\\Icons\\tropical_logs_1",
-    ["Dead Wood Tree"] = "Interface\\Icons\\INV_TradeskillItem_01",
-    ["Star Wood"] = "Interface\\Icons\\star_log_1",
-}
-
-local WOODCUTTING_NODE_ALIASES = {
-    ["Simple Wood Tree"] = "Simple Wood",
-    ["Bright Wood Tree"] = "Bright Wood",
-    ["Shade Wood Tree"] = "Shade Wood",
-    ["Tropical Wood Tree"] = "Tropical Wood",
-    ["Dead Wood"] = "Dead Wood Tree",
-}
-
 local TREASURE_ICON_PATH = "Interface\\Icons\\INV_Box_01"
 
 local TREASURE_NODE_KEYWORDS = {
@@ -208,38 +191,6 @@ function addon:GetHerbalismIconPath(herbName)
     return HERBALISM_ICON_PATHS[herbName]
 end
 
-local function NormalizeWoodcuttingNodeName(text)
-    if not text or text == "" then
-        return nil
-    end
-
-    local wood = text
-    local _, _, stripped = string.find(wood, "^(.-) %(%d+%)$")
-    if stripped then
-        wood = stripped
-    end
-
-    if WOODCUTTING_NODE_ALIASES[wood] then
-        return WOODCUTTING_NODE_ALIASES[wood]
-    end
-
-    if WOODCUTTING_ICON_PATHS[wood] then
-        return wood
-    end
-
-    if string.find(wood, "Dead Wood") then
-        return "Dead Wood Tree"
-    end
-
-    for key in pairs(WOODCUTTING_ICON_PATHS) do
-        if string.find(wood, key) then
-            return key
-        end
-    end
-
-    return nil
-end
-
 local function NormalizeTreasureNodeName(text)
     if not text or text == "" then
         return nil
@@ -261,13 +212,6 @@ local function NormalizeTreasureNodeName(text)
     return nil
 end
 
-function addon:GetWoodcuttingIconPath(nodeName)
-    if not nodeName then
-        return nil
-    end
-    return WOODCUTTING_ICON_PATHS[nodeName]
-end
-
 function addon:GetTreasureIconPath(nodeName)
     if not nodeName then
         return nil
@@ -283,7 +227,6 @@ end
 function addon:GetAutoIconForName(name)
     return self:GetMiningIconPath(name)
         or self:GetHerbalismIconPath(NormalizeHerbName(name))
-        or self:GetWoodcuttingIconPath(NormalizeWoodcuttingNodeName(name))
         or self:GetTreasureIconPath(name)
 end
 
@@ -294,10 +237,6 @@ function addon:GetAutoCategoryForName(name)
 
     if self:GetHerbalismIconPath(NormalizeHerbName(name)) then
         return "herbalism"
-    end
-
-    if self:GetWoodcuttingIconPath(NormalizeWoodcuttingNodeName(name)) then
-        return "woodcutting"
     end
 
     if self:GetTreasureIconPath(name) then
@@ -354,15 +293,6 @@ local function AddAutomaticHerbalismNote(herbName)
     AddAutomaticGatheringNote(normalized, addon:GetHerbalismIconPath(normalized), "herbalism")
 end
 
-local function AddAutomaticWoodcuttingNote(nodeName)
-    local normalized = NormalizeWoodcuttingNodeName(nodeName)
-    if not normalized then
-        return
-    end
-
-    AddAutomaticGatheringNote(normalized, addon:GetWoodcuttingIconPath(normalized), "woodcutting")
-end
-
 local function AddAutomaticTreasureNote(nodeName)
     local normalized = NormalizeTreasureNodeName(nodeName)
     if not normalized then
@@ -383,7 +313,6 @@ end
 local function IsTrackableNodeName(nodeName)
     return NormalizeMiningNodeName(nodeName)
         or NormalizeHerbName(nodeName)
-        or NormalizeWoodcuttingNodeName(nodeName)
         or NormalizeTreasureNodeName(nodeName)
 end
 
@@ -440,20 +369,12 @@ local function DetectGatheringType(nodeName, skillText)
         return "herbalism"
     end
 
-    if lowerSkill and (string.find(lowerSkill, "woodcut") or string.find(lowerSkill, "survival")) then
-        return "woodcutting"
-    end
-
     if NormalizeMiningNodeName(nodeName) then
         return "mining"
     end
 
     if NormalizeHerbName(nodeName) then
         return "herbalism"
-    end
-
-    if NormalizeWoodcuttingNodeName(nodeName) then
-        return "woodcutting"
     end
 
     if NormalizeTreasureNodeName(nodeName) then
@@ -468,8 +389,6 @@ local function AddAutomaticGatheringNoteByType(gatherType, nodeName)
         AddAutomaticMiningNote(nodeName)
     elseif gatherType == "herbalism" then
         AddAutomaticHerbalismNote(nodeName)
-    elseif gatherType == "woodcutting" then
-        AddAutomaticWoodcuttingNote(nodeName)
     elseif gatherType == "treasure" then
         AddAutomaticTreasureNote(nodeName)
     end
@@ -478,7 +397,6 @@ end
 function addon:OnGatheringInit()
     self.miningPerformPattern = BuildSimplePerformPattern()
     self.herbalismPerformPattern = self.miningPerformPattern
-    self.woodcuttingPerformPattern = self.miningPerformPattern
     self.lastTooltipNodeName = nil
     self.lastTooltipNodeTime = 0
     self:SetupTooltipTracking()
@@ -502,8 +420,6 @@ function addon:HandleGatheringEvent(event, msg)
             AddAutomaticMiningNote(nodeName)
         elseif lowerMsg and string.find(lowerMsg, "requires herbalism") then
             AddAutomaticHerbalismNote(nodeName)
-        elseif lowerMsg and (string.find(lowerMsg, "requires woodcut") or string.find(lowerMsg, "requires survival")) then
-            AddAutomaticWoodcuttingNote(nodeName)
         elseif lowerMsg and (string.find(lowerMsg, "locked") or string.find(lowerMsg, "lockpicking")) then
             AddAutomaticTreasureNote(nodeName)
         end
@@ -511,8 +427,8 @@ function addon:HandleGatheringEvent(event, msg)
     end
 
     if event == "CHAT_MSG_SPELL_SELF_BUFF" then
-        if msg and self.woodcuttingPerformPattern then
-            local _, _, skillName, targetName = string.find(msg, self.woodcuttingPerformPattern)
+        if msg and self.miningPerformPattern then
+            local _, _, skillName, targetName = string.find(msg, self.miningPerformPattern)
             if skillName and targetName then
                 AddAutomaticGatheringNoteByType(DetectGatheringType(targetName, skillName), targetName)
             end

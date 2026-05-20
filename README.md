@@ -2,7 +2,7 @@
 
 `Forged Map Notes` is a standalone map notes addon for World of Warcraft 1.12.1.
 
-It adds manual map notes, edit/delete dialogs, map coordinates, and automatic node notes for mining, herbalism, woodcutting and treasure chests.
+It adds manual map notes, edit/delete dialogs, map coordinates, and automatic node notes for mining, herbalism, and treasure chests.
 
 ## Features
 
@@ -16,12 +16,12 @@ It adds manual map notes, edit/delete dialogs, map coordinates, and automatic no
   - Bottom-left: cursor coordinates.
   - Bottom-right: player coordinates.
 - **Automatic gathering and treasure notes**
-  - Auto-adds notes when gathering **Mining**, **Herbalism**, and **Woodcutting** nodes.
+  - Auto-adds notes when gathering **Mining** and **Herbalism** nodes.
   - Auto-adds notes for treasure chests when they are opened or interacted with.
-  - Uses node-specific icons for ore, herb, wood, and treasure notes.
+  - Uses node-specific icons for ore, herb, and treasure notes.
 - **Map filter dropdown**
   - Adds a `Gathering` dropdown to the world map panel.
-  - Filters notes by `All`, `Personal`, `Mining`, `Herbalism`, `Woodcutting`, or `Treasure`.
+  - Filters notes by `All`, `Personal`, `Mining`, `Herbalism`, or `Treasure`.
 - **Per-map persistence**
   - Notes are saved per map/zone in `ForgedMapNotesDB`.
 
@@ -55,16 +55,9 @@ It adds manual map notes, edit/delete dialogs, map coordinates, and automatic no
 - `/tmn clear`
   - Clears notes for the currently viewed map.
 
-## Survival Woodcutting
+## Vanilla Compatibility
 
-The addon recognizes these Turtle WoW woodcutting node types and stores them as map notes when gathered:
-
-- `Simple Wood`
-- `Bright Wood`
-- `Shade Wood`
-- `Tropical Wood`
-- `Dead Wood Tree`
-- `Star Wood`
+This 1.12.1 port does not include Turtle WoW survival or woodcutting support. Tree nodes are not auto-mapped, and any legacy `woodcutting` note category is treated as `personal`.
 
 ## Notes
 

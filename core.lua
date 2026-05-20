@@ -19,7 +19,6 @@ addon.coordinatesFrame = addon.coordinatesFrame or nil
 addon.gatheringFilterDropDown = addon.gatheringFilterDropDown or nil
 addon.miningPerformPattern = nil
 addon.herbalismPerformPattern = nil
-addon.woodcuttingPerformPattern = nil
 addon.DEFAULT_NOTE_ICON = "Interface\\Icons\\INV_Misc_Note_01"
 addon.DEFAULT_GATHERING_FILTER = "all"
 
@@ -28,12 +27,11 @@ local GATHERING_FILTER_OPTIONS = {
     { value = "personal", text = "Personal" },
     { value = "mining", text = "Mining" },
     { value = "herbalism", text = "Herbalism" },
-    { value = "woodcutting", text = "Woodcutting" },
     { value = "treasure", text = "Treasure" },
 }
 
 function addon:NormalizeNoteCategory(category)
-    if not category or category == "" or category == "general" then
+    if not category or category == "" or category == "general" or category == "woodcutting" then
         return "personal"
     end
 
@@ -45,7 +43,7 @@ function addon:MigrateLegacyGeneralCategory()
         return
     end
 
-    if ForgedMapNotesDB.gatheringFilter == "general" then
+    if ForgedMapNotesDB.gatheringFilter == "general" or ForgedMapNotesDB.gatheringFilter == "woodcutting" then
         ForgedMapNotesDB.gatheringFilter = "personal"
     end
 
@@ -57,7 +55,7 @@ function addon:MigrateLegacyGeneralCategory()
         if notes then
             for i = 1, table.getn(notes) do
                 local note = notes[i]
-                if note and note.category == "general" then
+                if note and (note.category == "general" or note.category == "woodcutting") then
                     note.category = "personal"
                 end
             end
@@ -187,7 +185,7 @@ function addon:SetupGatheringFilterDropdown()
         UIDropDownMenu_Initialize(dropDown, function()
             for i = 1, table.getn(GATHERING_FILTER_OPTIONS) do
                 local option = GATHERING_FILTER_OPTIONS[i]
-                local info = UIDropDownMenu_CreateInfo()
+                local info = {}
                 info.text = option.text
                 info.value = option.value
                 info.checked = addon.activeGatheringFilter == option.value
